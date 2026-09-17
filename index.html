@@ -30,7 +30,7 @@
 
 <!-- APP -->
 <div id="app-screen" class="screen hidden">
-  <div id="testmodus-banner" class="testmodus-banner hidden">⚠️ TESTMODUS ACTIEF — je werkt nu met nepdata, niet met echte leads</div>
+  <div id="testmodus-banner" class="testmodus-banner hidden">TESTMODUS ACTIEF — je werkt nu met nepdata, niet met echte leads</div>
 
   <header class="topbar">
     <h1>Lead Generation Bot</h1>
@@ -40,7 +40,7 @@
         <input type="checkbox" id="testmodus-toggle" checked>
         <span class="slider"></span>
       </label>
-      <button type="button" id="settings-btn" class="secondary">⚙️ Instellingen</button>
+      <button type="button" id="settings-btn" class="secondary">Instellingen</button>
       <button type="button" id="logout-btn" class="secondary">Uitloggen</button>
     </div>
   </header>
@@ -71,7 +71,7 @@
         <button type="button" id="reset-filters" class="secondary">Reset</button>
       </form>
 
-      <button type="button" id="generate-fake-leads" class="secondary">✨ Genereer voorbeeldleads</button>
+      <button type="button" id="generate-fake-leads" class="secondary">Genereer voorbeeldleads</button>
       <p id="generate-fake-error" class="error-text"></p>
 
       <h2>Nieuwe lead toevoegen</h2>
@@ -121,6 +121,14 @@
 
     <main class="main">
       <div id="pipeline-summary" class="pipeline-summary"></div>
+
+      <div id="bulk-actions" class="bulk-actions hidden">
+        <span id="bulk-count">0 geselecteerd</span>
+        <button type="button" id="bulk-send-btn" class="secondary">✉️📤 Schrijf &amp; verstuur mails</button>
+        <button type="button" id="bulk-clear-btn" class="secondary">Selectie wissen</button>
+      </div>
+      <p id="bulk-progress" class="bulk-progress hidden"></p>
+
       <div id="lead-grid" class="lead-grid"></div>
       <p id="empty-state" class="empty-state hidden"></p>
     </main>

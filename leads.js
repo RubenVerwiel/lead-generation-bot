@@ -71,7 +71,7 @@ function genereerNepLead(criteria) {
   const email = `${voornaam.toLowerCase()}@${domein}.nl`;
   const telefoon = `06-${Math.floor(10000000 + Math.random() * 89999999)}`;
 
-  return { bedrijfsnaam, branche, locatie, bedrijfsgrootte, contactpersoon, email, telefoon, status: 'Nieuw' };
+  return { bedrijfsnaam, branche, locatie, bedrijfsgrootte, contactpersoon, email, telefoon, status: 'nieuw' };
 }
 
 export async function generateFakeLeads(criteria = {}, count = 5) {

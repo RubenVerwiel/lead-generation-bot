@@ -2,9 +2,20 @@ import { login, logout, watchAuth } from './auth.js';
 import { fetchLeads, createLead, updateLead, generateFakeLeads } from './leads.js';
 import { isTestmodus, setTestmodus, onTestmodusChange } from './testmodus.js';
 import { getSettings, saveSettings } from './settings.js';
-import { generateMail } from './mail.js';
+import { generateMail, sendMail, splitMail } from './mail.js';
 
-const STATUSES = ['Nieuw', 'Benaderd', 'Reactie', 'Klant', 'Afgewezen'];
+// De database slaat de kleine-letterwaarde op; STATUS_LABELS bepaalt wat de
+// gebruiker ziet.
+const STATUSES = ['nieuw', 'benaderd', 'gereageerd', 'afspraak', 'klant', 'afgewezen'];
+
+const STATUS_LABELS = {
+  nieuw: 'Nieuw',
+  benaderd: 'Benaderd',
+  gereageerd: 'Gereageerd',
+  afspraak: 'Afspraak',
+  klant: 'Klant',
+  afgewezen: 'Afgewezen',
+};
 
 const loginScreen = document.getElementById('login-screen');
 const appScreen = document.getElementById('app-screen');
@@ -33,20 +44,20 @@ const settingsModal = document.getElementById('settings-modal');
 const settingsForm = document.getElementById('settings-form');
 const settingsClose = document.getElementById('settings-close');
 
+const bulkActionsBar = document.getElementById('bulk-actions');
+const bulkCountEl = document.getElementById('bulk-count');
+const bulkSendBtn = document.getElementById('bulk-send-btn');
+const bulkClearBtn = document.getElementById('bulk-clear-btn');
+const bulkProgress = document.getElementById('bulk-progress');
+
 let currentFilters = {};
 let currentLeads = [];
+let selectedLeadIds = new Set();
 
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str ?? '';
   return div.innerHTML;
-}
-
-function slug(status) {
-  return status
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
 }
 
 function showApp() {
@@ -82,9 +93,9 @@ function renderPipeline(leads) {
 
   pipelineSummary.innerHTML = STATUSES.map(
     (status) => `
-    <div class="pipeline-item status-${slug(status)}">
+    <div class="pipeline-item status-${status}">
       <span class="pipeline-count">${counts[status]}</span>
-      <span class="pipeline-label">${status}</span>
+      <span class="pipeline-label">${STATUS_LABELS[status]}</span>
     </div>
   `
   ).join('');
@@ -102,19 +113,20 @@ function renderLeads(leads) {
 
   leads.forEach((lead) => {
     const card = document.createElement('div');
-    card.className = `lead-card status-${slug(lead.status)}`;
+    card.className = `lead-card status-${lead.status}`;
     card.innerHTML = `
       <div class="lead-top">
+        <label class="lead-select-wrap">
+          <input type="checkbox" class="lead-select" data-id="${lead.id}" ${selectedLeadIds.has(lead.id) ? 'checked' : ''}>
+        </label>
         <span class="lead-name">${escapeHtml(lead.bedrijfsnaam)}</span>
-        <span class="lead-status-badge">${escapeHtml(lead.status)}</span>
+        <span class="lead-status-badge">${escapeHtml(STATUS_LABELS[lead.status] ?? lead.status)}</span>
       </div>
       <div class="lead-meta">
-        <span>🏷️ ${escapeHtml(lead.branche)}</span>
-        <span>👥 ${escapeHtml(lead.bedrijfsgrootte)}</span>
-        <span>📍 ${escapeHtml(lead.locatie)}</span>
+        ${escapeHtml(lead.branche)} · ${escapeHtml(lead.bedrijfsgrootte)} · ${escapeHtml(lead.locatie)}
       </div>
       <div class="lead-contact">
-        👤 ${escapeHtml(lead.contactpersoon)} · ✉️ ${escapeHtml(lead.email)} · ☎️ ${escapeHtml(lead.telefoon)}
+        ${escapeHtml(lead.contactpersoon)} · ${escapeHtml(lead.email)} · ${escapeHtml(lead.telefoon)}
       </div>
       ${lead.notities ? `<div class="lead-notes">${escapeHtml(lead.notities)}</div>` : ''}
       <div class="lead-mail">
@@ -124,6 +136,7 @@ function renderLeads(leads) {
             ${lead.mail_concept ? '🔁 Herschrijf mail' : '✉️ Schrijf mail'}
           </button>
           <button type="button" class="secondary copy-mail-btn ${lead.mail_concept ? '' : 'hidden'}" data-id="${lead.id}">📋 Kopieer</button>
+          <button type="button" class="secondary send-mail-btn ${lead.mail_concept ? '' : 'hidden'}" data-id="${lead.id}">📤 Verstuur</button>
         </div>
         <p class="mail-error error-text" data-id="${lead.id}"></p>
       </div>
@@ -174,6 +187,9 @@ testmodusToggle.addEventListener('change', () => {
 onTestmodusChange((actief) => {
   testmodusBanner.classList.toggle('hidden', !actief);
   generateFakeBtn.classList.toggle('hidden', !actief);
+  // Het schema (en daarmee de lead-id's) wisselt, dus een oude selectie klopt niet meer.
+  selectedLeadIds.clear();
+  updateBulkBar();
   loadLeads();
 });
 
@@ -300,5 +316,109 @@ leadGrid.addEventListener('click', async (e) => {
     } catch (err) {
       console.error('Kopiëren mislukt', err);
     }
+    return;
   }
+
+  const sendBtn = e.target.closest('.send-mail-btn');
+  if (sendBtn) {
+    const id = sendBtn.dataset.id;
+    const lead = currentLeads.find((l) => l.id === id);
+    if (!lead || !lead.mail_concept) return;
+
+    const testWarning = isTestmodus()
+      ? '\n\nLet op: je zit in testmodus, dit is een nep-e-mailadres — deze mail zal waarschijnlijk bouncen.'
+      : '';
+    if (!window.confirm(`Mail versturen naar ${lead.email}?${testWarning}`)) return;
+
+    const errorEl = leadGrid.querySelector(`.mail-error[data-id="${id}"]`);
+    errorEl.textContent = '';
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Versturen...';
+
+    try {
+      const { subject, body } = splitMail(lead.mail_concept);
+      await sendMail({ to: lead.email, subject, body });
+      if (lead.status === 'nieuw') {
+        await updateLead(id, { status: 'benaderd' });
+      }
+      await loadLeads();
+    } catch (err) {
+      errorEl.textContent = 'Kon mail niet versturen: ' + err.message;
+      sendBtn.disabled = false;
+      sendBtn.textContent = '📤 Verstuur';
+    }
+  }
+});
+
+// --- Selectievakjes op leadkaarten ---
+leadGrid.addEventListener('change', (e) => {
+  const checkbox = e.target.closest('.lead-select');
+  if (!checkbox) return;
+
+  if (checkbox.checked) {
+    selectedLeadIds.add(checkbox.dataset.id);
+  } else {
+    selectedLeadIds.delete(checkbox.dataset.id);
+  }
+  updateBulkBar();
+});
+
+function updateBulkBar() {
+  const count = selectedLeadIds.size;
+  bulkActionsBar.classList.toggle('hidden', count === 0);
+  bulkCountEl.textContent = `${count} geselecteerd`;
+}
+
+bulkClearBtn.addEventListener('click', () => {
+  selectedLeadIds.clear();
+  updateBulkBar();
+  renderLeads(currentLeads);
+});
+
+// --- Voor alle geselecteerde leads: mail schrijven, opslaan én versturen ---
+bulkSendBtn.addEventListener('click', async () => {
+  const ids = Array.from(selectedLeadIds);
+  if (ids.length === 0) return;
+
+  const testWarning = isTestmodus()
+    ? '\n\nLet op: je zit in testmodus met nepleads en verzonnen e-mailadressen — deze mails zullen waarschijnlijk bouncen.'
+    : '';
+  const confirmed = window.confirm(
+    `Weet je zeker dat je voor ${ids.length} lead(s) een mail wilt laten schrijven én versturen?${testWarning}`
+  );
+  if (!confirmed) return;
+
+  bulkSendBtn.disabled = true;
+  bulkProgress.classList.remove('hidden');
+
+  let success = 0;
+  let failed = 0;
+
+  for (let i = 0; i < ids.length; i++) {
+    const lead = currentLeads.find((l) => l.id === ids[i]);
+    if (!lead) continue;
+
+    bulkProgress.textContent = `Bezig: ${i + 1} van ${ids.length} (${lead.bedrijfsnaam})...`;
+
+    try {
+      const mailText = await generateMail(lead);
+      await updateLead(lead.id, { mail_concept: mailText });
+      const { subject, body } = splitMail(mailText);
+      await sendMail({ to: lead.email, subject, body });
+      if (lead.status === 'nieuw') {
+        await updateLead(lead.id, { status: 'benaderd' });
+      }
+      success++;
+    } catch (err) {
+      console.error(`Fout bij ${lead.bedrijfsnaam}:`, err);
+      failed++;
+    }
+  }
+
+  bulkProgress.textContent = `Klaar: ${success} verstuurd, ${failed} mislukt.`;
+  selectedLeadIds.clear();
+  bulkSendBtn.disabled = false;
+  updateBulkBar();
+  await loadLeads();
+  setTimeout(() => bulkProgress.classList.add('hidden'), 5000);
 });
