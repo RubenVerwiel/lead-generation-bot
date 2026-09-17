@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lead Generation Bot</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="screen">
+  <div class="login-card">
+    <h1>Lead Generation Bot</h1>
+    <p class="subtitle">Log in om je leads te beheren</p>
+    <form id="login-form">
+      <div class="field">
+        <label for="login-email">E-mail</label>
+        <input type="email" id="login-email" required autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="login-password">Wachtwoord</label>
+        <input type="password" id="login-password" required autocomplete="current-password">
+      </div>
+      <button type="submit">Inloggen</button>
+      <p id="login-error" class="error-text"></p>
+    </form>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen" class="screen hidden">
+  <div id="testmodus-banner" class="testmodus-banner hidden">⚠️ TESTMODUS ACTIEF — je werkt nu met nepdata, niet met echte leads</div>
+
+  <header class="topbar">
+    <h1>Lead Generation Bot</h1>
+    <div class="topbar-actions">
+      <span class="switch-label">Testmodus</span>
+      <label class="switch">
+        <input type="checkbox" id="testmodus-toggle" checked>
+        <span class="slider"></span>
+      </label>
+      <button type="button" id="settings-btn" class="secondary">⚙️ Instellingen</button>
+      <button type="button" id="logout-btn" class="secondary">Uitloggen</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>Zoekcriteria</h2>
+      <form id="filter-form">
+        <div class="field">
+          <label for="filter-branche">Branche</label>
+          <input type="text" id="filter-branche" placeholder="Bijv. IT, Bouw">
+        </div>
+        <div class="field">
+          <label for="filter-grootte">Bedrijfsgrootte</label>
+          <select id="filter-grootte">
+            <option value="">Alle groottes</option>
+            <option value="1-10 medewerkers">1-10 medewerkers</option>
+            <option value="11-50 medewerkers">11-50 medewerkers</option>
+            <option value="51-200 medewerkers">51-200 medewerkers</option>
+            <option value="200+ medewerkers">200+ medewerkers</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filter-locatie">Locatie</label>
+          <input type="text" id="filter-locatie" placeholder="Bijv. Utrecht">
+        </div>
+        <button type="submit">Filteren</button>
+        <button type="button" id="reset-filters" class="secondary">Reset</button>
+      </form>
+
+      <button type="button" id="generate-fake-leads" class="secondary">✨ Genereer voorbeeldleads</button>
+      <p id="generate-fake-error" class="error-text"></p>
+
+      <h2>Nieuwe lead toevoegen</h2>
+      <form id="add-lead-form">
+        <div class="field">
+          <label for="add-bedrijfsnaam">Bedrijfsnaam</label>
+          <input type="text" id="add-bedrijfsnaam" required>
+        </div>
+        <div class="field">
+          <label for="add-branche">Branche</label>
+          <input type="text" id="add-branche">
+        </div>
+        <div class="field">
+          <label for="add-locatie">Locatie</label>
+          <input type="text" id="add-locatie">
+        </div>
+        <div class="field">
+          <label for="add-grootte">Bedrijfsgrootte</label>
+          <select id="add-grootte">
+            <option value="" selected>Onbekend</option>
+            <option value="1-10 medewerkers">1-10 medewerkers</option>
+            <option value="11-50 medewerkers">11-50 medewerkers</option>
+            <option value="51-200 medewerkers">51-200 medewerkers</option>
+            <option value="200+ medewerkers">200+ medewerkers</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="add-contactpersoon">Contactpersoon</label>
+          <input type="text" id="add-contactpersoon">
+        </div>
+        <div class="field">
+          <label for="add-email">E-mail</label>
+          <input type="email" id="add-email">
+        </div>
+        <div class="field">
+          <label for="add-telefoon">Telefoon</label>
+          <input type="text" id="add-telefoon">
+        </div>
+        <div class="field">
+          <label for="add-notities">Notities</label>
+          <textarea id="add-notities" rows="2"></textarea>
+        </div>
+        <button type="submit">Lead toevoegen</button>
+        <p id="add-lead-error" class="error-text"></p>
+      </form>
+    </aside>
+
+    <main class="main">
+      <div id="pipeline-summary" class="pipeline-summary"></div>
+      <div id="lead-grid" class="lead-grid"></div>
+      <p id="empty-state" class="empty-state hidden"></p>
+    </main>
+  </div>
+
+  <!-- INSTELLINGEN -->
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>Instellingen voor de AI-mailfunctie</h2>
+      <form id="settings-form">
+        <div class="field">
+          <label for="settings-naam">Jouw naam</label>
+          <input type="text" id="settings-naam">
+        </div>
+        <div class="field">
+          <label for="settings-bedrijf">Bedrijf / dienst</label>
+          <input type="text" id="settings-bedrijf">
+        </div>
+        <div class="field">
+          <label for="settings-aanbod">Wat bied je aan?</label>
+          <textarea id="settings-aanbod" rows="3"></textarea>
+        </div>
+        <div class="field">
+          <label for="settings-toon">Toon</label>
+          <select id="settings-toon">
+            <option value="zakelijk">Zakelijk</option>
+            <option value="informeel">Informeel</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="submit">Opslaan</button>
+          <button type="button" id="settings-close" class="secondary">Sluiten</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
