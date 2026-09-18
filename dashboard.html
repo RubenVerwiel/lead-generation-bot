@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Lead Generation Bot</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="dashboard-screen" class="screen hidden">
+  <div id="testmodus-banner" class="testmodus-banner hidden">TESTMODUS ACTIEF — je werkt nu met nepdata, niet met echte leads</div>
+
+  <header class="topbar">
+    <div class="topbar-titel">
+      <a href="index.html" class="terug-link">← Terug naar overzicht</a>
+      <h1>Dashboard</h1>
+    </div>
+  </header>
+
+  <div class="dashboard-layout">
+    <section class="panel">
+      <h2>Deze week</h2>
+      <div class="kpi-rij">
+        <div class="kpi">
+          <span class="kpi-getal" id="kpi-nieuw">–</span>
+          <span class="kpi-label">Nieuwe leads</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-getal" id="kpi-mails">–</span>
+          <span class="kpi-label">Verstuurde mails</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-getal" id="kpi-vooruitgang">–</span>
+          <span class="kpi-label">Naar afspraak of klant</span>
+        </div>
+      </div>
+      <p class="toelichting">Gemeten vanaf maandag van deze week.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Funnel</h2>
+      <div id="funnel" class="funnel"></div>
+      <p class="toelichting">
+        Elke stap telt de leads die minstens zover zijn gekomen. Een klant telt dus
+        ook mee bij de stappen ervoor. Afgewezen leads staan apart.
+      </p>
+      <div class="afgewezen-regel">
+        <span id="afgewezen-aantal">–</span> leads afgewezen
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Conversie per stap</h2>
+      <div id="conversie" class="conversie-rij"></div>
+      <p class="toelichting">Het percentage leads dat van de ene stap naar de volgende doorgaat.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Vandaag op te volgen</h2>
+      <div id="follow-ups"></div>
+    </section>
+  </div>
+</div>
+
+<div id="dashboard-laden" class="laadscherm">Bezig met laden…</div>
+
+<script type="module" src="dashboard.js"></script>
+</body>
+</html>

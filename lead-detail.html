@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lead — Lead Generation Bot</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="detail-screen" class="screen hidden">
+  <div id="testmodus-banner" class="testmodus-banner hidden">TESTMODUS ACTIEF — je werkt nu met nepdata, niet met echte leads</div>
+
+  <header class="topbar">
+    <div class="topbar-titel">
+      <a href="index.html" class="terug-link">← Terug naar overzicht</a>
+      <h1 id="detail-titel">Lead</h1>
+    </div>
+    <div class="topbar-actions">
+      <span id="detail-status-badge" class="lead-status-badge"></span>
+    </div>
+  </header>
+
+  <div class="detail-layout">
+    <section class="panel">
+      <h2>Bedrijfsgegevens</h2>
+      <form id="lead-form">
+        <div class="field">
+          <label for="veld-bedrijfsnaam">Bedrijfsnaam</label>
+          <input type="text" id="veld-bedrijfsnaam" required>
+        </div>
+        <div class="veld-paar">
+          <div class="field">
+            <label for="veld-branche">Branche</label>
+            <input type="text" id="veld-branche">
+          </div>
+          <div class="field">
+            <label for="veld-locatie">Locatie</label>
+            <input type="text" id="veld-locatie">
+          </div>
+        </div>
+        <div class="veld-paar">
+          <div class="field">
+            <label for="veld-bedrijfsgrootte">Bedrijfsgrootte</label>
+            <select id="veld-bedrijfsgrootte">
+              <option value="">Onbekend</option>
+              <option value="1-10 medewerkers">1-10 medewerkers</option>
+              <option value="11-50 medewerkers">11-50 medewerkers</option>
+              <option value="51-200 medewerkers">51-200 medewerkers</option>
+              <option value="200+ medewerkers">200+ medewerkers</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="veld-bron">Bron</label>
+            <select id="veld-bron">
+              <option value="scraper">Scraper</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="handmatig">Handmatig</option>
+              <option value="website">Website</option>
+              <option value="overig">Overig</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="veld-contactpersoon">Contactpersoon</label>
+          <input type="text" id="veld-contactpersoon">
+        </div>
+        <div class="veld-paar">
+          <div class="field">
+            <label for="veld-email">E-mail</label>
+            <input type="email" id="veld-email">
+          </div>
+          <div class="field">
+            <label for="veld-telefoon">Telefoon</label>
+            <input type="text" id="veld-telefoon">
+          </div>
+        </div>
+        <div class="veld-paar">
+          <div class="field">
+            <label for="veld-status">Status</label>
+            <select id="veld-status">
+              <option value="nieuw">Nieuw</option>
+              <option value="benaderd">Benaderd</option>
+              <option value="gereageerd">Gereageerd</option>
+              <option value="afspraak">Afspraak</option>
+              <option value="klant">Klant</option>
+              <option value="afgewezen">Afgewezen</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="veld-leadscore">Leadscore</label>
+            <select id="veld-leadscore">
+              <option value="">Geen score</option>
+              <option value="1">★</option>
+              <option value="2">★★</option>
+              <option value="3">★★★</option>
+              <option value="4">★★★★</option>
+              <option value="5">★★★★★</option>
+            </select>
+          </div>
+        </div>
+        <div class="veld-paar">
+          <div class="field">
+            <label for="veld-opgericht-jaar">Opgericht in jaar</label>
+            <input type="number" id="veld-opgericht-jaar" min="1800" max="2100">
+          </div>
+          <div class="field">
+            <label for="veld-follow-up">Follow-up-datum</label>
+            <input type="date" id="veld-follow-up">
+          </div>
+        </div>
+        <div class="field">
+          <label for="veld-website-url">Website</label>
+          <input type="text" id="veld-website-url" placeholder="https://...">
+        </div>
+        <label class="checkbox-regel">
+          <input type="checkbox" id="veld-heeft-website"> Heeft een website
+        </label>
+        <label class="checkbox-regel">
+          <input type="checkbox" id="veld-niet-benaderen"> Niet benaderen (AVG/opt-out)
+        </label>
+        <div class="field">
+          <label for="veld-notities">Algemene notitie</label>
+          <textarea id="veld-notities" rows="3"></textarea>
+        </div>
+        <button type="submit">Wijzigingen opslaan</button>
+        <p id="opslaan-melding" class="melding"></p>
+      </form>
+
+      <h2>Mail</h2>
+      <div id="mail-blok" class="lead-mail">
+        <div class="lead-mail-actions" id="mail-acties"></div>
+        <p id="mail-fout" class="error-text"></p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Notitie toevoegen</h2>
+      <form id="notitie-form">
+        <div class="field">
+          <label for="notitie-tekst">Nieuwe notitie</label>
+          <textarea id="notitie-tekst" rows="3" required></textarea>
+        </div>
+        <button type="submit">Notitie opslaan</button>
+        <p id="notitie-fout" class="error-text"></p>
+      </form>
+
+      <h2>Tijdlijn</h2>
+      <div id="tijdlijn" class="tijdlijn"></div>
+    </section>
+  </div>
+</div>
+
+<div id="detail-laden" class="laadscherm">Bezig met laden…</div>
+
+<script type="module" src="lead-detail.js"></script>
+</body>
+</html>

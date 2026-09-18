@@ -209,6 +209,38 @@ button.secondary:hover { background: #f1f5f9; }
 
 .sidebar h2:first-child { margin-top: 0; }
 
+/* Filterpaneel */
+.checkbox-groep {
+  display: grid;
+  gap: 4px;
+}
+
+.checkbox-groep label,
+.checkbox-regel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.checkbox-groep input,
+.checkbox-regel input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+}
+
+.veld-paar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.veld-paar input { min-width: 0; }
+
 /* Bulkacties (meerdere leads selecteren) */
 .bulk-actions {
   display: flex;
@@ -224,6 +256,7 @@ button.secondary:hover { background: #f1f5f9; }
 
 .bulk-actions span { font-size: 0.9rem; font-weight: 600; color: var(--accent-hover); }
 .bulk-actions button { width: auto; padding: 8px 14px; font-size: 0.85rem; }
+.bulk-actions select { padding: 8px 10px; font-size: 0.85rem; background: #fff; }
 
 .bulk-progress {
   color: var(--text-muted);
@@ -270,26 +303,91 @@ button.secondary:hover { background: #f1f5f9; }
 
 .pipeline-label { font-size: 0.78rem; color: var(--text-muted); }
 
-/* Leadkaarten */
-.lead-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
+/* Lijstbalk met zoeken en export */
+.lijst-balk {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
-.lead-card {
-  background: var(--card-bg);
+.lijst-balk input[type="search"] { flex: 1; min-width: 200px; }
+.lijst-balk button { width: auto; padding: 10px 16px; font-size: 0.85rem; }
+.lead-aantal { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; }
+
+/* Leadtabel */
+.tabel-wrap {
+  background: var(--panel);
   border: 1px solid var(--panel-border);
-  border-left: 4px solid var(--status-color, var(--accent));
   border-radius: 14px;
-  padding: 16px 18px;
-  display: grid;
-  gap: 6px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  overflow-x: auto;
 }
 
-.lead-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.lead-name { font-weight: 700; font-size: 1rem; }
+.lead-tabel {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.lead-tabel th,
+.lead-tabel td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--panel-border);
+  vertical-align: top;
+}
+
+.lead-tabel th {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  background: #f8fafc;
+}
+
+.lead-tabel tbody tr:last-child td { border-bottom: none; }
+.lead-tabel tbody tr:hover { background: #f8fafc; }
+
+/* De statuskleur van de rij zit in een streepje links */
+.lead-tabel tbody tr { border-left: 3px solid var(--status-color, transparent); }
+
+.lead-tabel th.sorteerbaar { cursor: pointer; user-select: none; }
+.lead-tabel th.sorteerbaar:hover { color: var(--accent); }
+.lead-tabel th.sorteerbaar::after { content: " " attr(data-richting); color: var(--accent); }
+.lead-tabel th.sorteer-actief { color: var(--accent); }
+
+.kolom-select { width: 34px; }
+.kolom-datum { white-space: nowrap; color: var(--text-muted); }
+.kolom-acties { white-space: nowrap; }
+
+.rij-contact { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+.icoon-knop {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 0.85rem;
+  width: auto;
+  cursor: pointer;
+}
+
+.icoon-knop:hover { background: #f1f5f9; }
+
+button.gevaar { border-color: #fecaca; color: #b91c1c; }
+button.gevaar:hover { background: #fef2f2; }
+
+.lead-tabel tr.niet-benaderen { background: #fef2f2; }
+.lead-tabel tr.niet-benaderen:hover { background: #fee2e2; }
+.lead-name {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.lead-name:hover { color: var(--accent); text-decoration: underline; }
 
 .lead-status-badge {
   font-size: 0.72rem;
@@ -301,16 +399,21 @@ button.secondary:hover { background: #f1f5f9; }
   color: var(--status-color, var(--text));
 }
 
-.lead-meta {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
+.lead-score { color: #d97706; letter-spacing: 1px; white-space: nowrap; }
+
+/* AVG/opt-out: visueel duidelijk dat deze lead niet benaderd mag worden */
+.opt-out-markering {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #b91c1c;
+  background: #fee2e2;
+  border-radius: 6px;
+  padding: 2px 6px;
+  margin-left: 6px;
 }
 
-.lead-contact { color: var(--text-muted); font-size: 0.82rem; }
-.lead-notes { color: var(--text-muted); font-size: 0.82rem; font-style: italic; margin-top: 4px; }
+.mail-geblokkeerd { font-size: 0.78rem; color: var(--text-muted); font-style: italic; }
 
 .empty-state { text-align: center; color: var(--text-muted); padding: 40px; }
 
@@ -323,6 +426,18 @@ button.secondary:hover { background: #f1f5f9; }
   gap: 8px;
 }
 
+/* De concept-mail staat standaard ingeklapt, zodat kaarten compact blijven. */
+.mail-details summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 4px 0;
+  list-style-position: inside;
+}
+
+.mail-details summary:hover { color: var(--accent-hover); }
+
 .mail-text {
   white-space: pre-wrap;
   background: #f8fafc;
@@ -332,11 +447,166 @@ button.secondary:hover { background: #f1f5f9; }
   font-family: inherit;
   font-size: 0.82rem;
   color: var(--text);
-  margin: 0;
+  margin: 8px 0 0;
 }
 
 .lead-mail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .lead-mail-actions button { padding: 8px 12px; font-size: 0.8rem; width: auto; }
+
+/* Detailpagina */
+.laadscherm {
+  padding: 60px 28px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.topbar-titel { display: flex; flex-direction: column; gap: 4px; }
+
+.terug-link {
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.terug-link:hover { text-decoration: underline; }
+
+.detail-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 24px;
+  padding: 24px 28px;
+  align-items: start;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.panel h2 {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin: 24px 0 12px;
+}
+
+.panel h2:first-child { margin-top: 0; }
+
+.melding { font-size: 0.85rem; margin: 0; min-height: 1em; }
+.melding-gelukt { color: #059669; }
+.melding-fout { color: var(--danger); }
+
+.mail-concept-blok { grid-column: 1 / -1; width: 100%; }
+
+/* Tijdlijn */
+.tijdlijn { display: grid; gap: 12px; }
+
+.tijdlijn-item {
+  border-left: 3px solid var(--panel-border);
+  padding: 8px 0 8px 14px;
+}
+
+.tijdlijn-item.soort-notitie { border-left-color: #6366f1; }
+.tijdlijn-item.soort-mail { border-left-color: #0891b2; }
+.tijdlijn-item.soort-status { border-left-color: #d97706; }
+
+.tijdlijn-moment { font-size: 0.75rem; color: var(--text-muted); }
+.tijdlijn-titel { font-size: 0.88rem; font-weight: 600; margin-top: 2px; }
+.tijdlijn-tekst { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; white-space: pre-wrap; }
+.tijdlijn-leeg { color: var(--text-muted); font-size: 0.85rem; }
+
+@media (max-width: 860px) {
+  .detail-layout { grid-template-columns: 1fr; }
+}
+
+/* Dashboard */
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 24px 28px;
+  align-items: start;
+}
+
+.kpi-rij { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+.kpi {
+  background: #f8fafc;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.kpi-getal { display: block; font-size: 1.8rem; font-weight: 700; }
+.kpi-label { font-size: 0.78rem; color: var(--text-muted); }
+
+.toelichting { font-size: 0.78rem; color: var(--text-muted); margin: 12px 0 0; }
+
+/* Funnel: één kleur die per stap donkerder wordt, met het aantal erbij */
+.funnel { display: grid; gap: 8px; }
+
+.funnel-rij {
+  display: grid;
+  grid-template-columns: 96px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+}
+
+.funnel-label { font-size: 0.82rem; color: var(--text-muted); }
+
+.funnel-spoor {
+  background: #f1f5f9;
+  border-radius: 4px;
+  height: 22px;
+  overflow: hidden;
+}
+
+.funnel-balk { height: 100%; border-radius: 0 4px 4px 0; }
+.funnel-aantal { font-size: 0.85rem; font-weight: 700; text-align: right; }
+
+.afgewezen-regel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--panel-border);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.afgewezen-regel span { font-weight: 700; color: #dc2626; }
+
+.conversie-rij { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+.conversie-stap {
+  background: #f8fafc;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.conversie-percentage { display: block; font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+.conversie-label { font-size: 0.75rem; color: var(--text-muted); }
+
+.follow-up {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--panel-border);
+  font-size: 0.85rem;
+}
+
+.follow-up:last-child { border-bottom: none; }
+.follow-up a { color: var(--text); text-decoration: none; font-weight: 600; }
+.follow-up a:hover { color: var(--accent); text-decoration: underline; }
+.follow-up-datum { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+.follow-up.te-laat .follow-up-datum { color: #b91c1c; font-weight: 600; }
+
+@media (max-width: 860px) {
+  .dashboard-layout { grid-template-columns: 1fr; }
+}
 
 /* Instellingenpaneel (modal) */
 .modal-overlay {
@@ -369,11 +639,42 @@ button.secondary:hover { background: #f1f5f9; }
 .status-nieuw { --status-color: #2563eb; }
 .status-benaderd { --status-color: #d97706; }
 .status-gereageerd { --status-color: #7c3aed; }
-.status-afspraak { --status-color: #0891b2; }
+/* Afspraak was cyaan, maar dat was te moeilijk te onderscheiden van het groen
+   van Klant — ook voor mensen zonder kleurenblindheid. */
+.status-afspraak { --status-color: #c2410c; }
 .status-klant { --status-color: #059669; }
 .status-afgewezen { --status-color: #dc2626; }
 
 /* Mobiel */
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; }
+}
+
+.topbar-link {
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 8px 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+}
+
+.topbar-link:hover { background: #f1f5f9; }
+
+/* Kort accent op een rij die net is bijgewerkt, zodat je hem niet kwijtraakt */
+.lead-tabel tr.net-gewijzigd { background: #fef9c3; transition: background 0.4s ease; }
+
+/* Pipeline-blokken zijn klikbare filters */
+.pipeline-item {
+  cursor: pointer;
+  font-family: inherit;
+  width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pipeline-item:hover { background: #f8fafc; box-shadow: 0 2px 8px -4px rgba(15, 23, 42, 0.2); }
+
+.pipeline-item.pipeline-actief {
+  border-color: var(--status-color, var(--accent));
+  box-shadow: 0 0 0 2px var(--status-color, var(--accent));
 }

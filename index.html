@@ -40,6 +40,7 @@
         <input type="checkbox" id="testmodus-toggle" checked>
         <span class="slider"></span>
       </label>
+      <a id="dashboard-link" href="dashboard.html" class="topbar-link">Dashboard</a>
       <button type="button" id="settings-btn" class="secondary">Instellingen</button>
       <button type="button" id="logout-btn" class="secondary">Uitloggen</button>
     </div>
@@ -67,8 +68,73 @@
           <label for="filter-locatie">Locatie</label>
           <input type="text" id="filter-locatie" placeholder="Bijv. Utrecht">
         </div>
-        <button type="submit">Filteren</button>
-        <button type="button" id="reset-filters" class="secondary">Reset</button>
+
+        <div class="field">
+          <label>Status</label>
+          <div id="filter-status-groep" class="checkbox-groep">
+            <label><input type="checkbox" class="filter-status" value="nieuw"> Nieuw</label>
+            <label><input type="checkbox" class="filter-status" value="benaderd"> Benaderd</label>
+            <label><input type="checkbox" class="filter-status" value="gereageerd"> Gereageerd</label>
+            <label><input type="checkbox" class="filter-status" value="afspraak"> Afspraak</label>
+            <label><input type="checkbox" class="filter-status" value="klant"> Klant</label>
+            <label><input type="checkbox" class="filter-status" value="afgewezen"> Afgewezen</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="filter-bron">Bron</label>
+          <select id="filter-bron">
+            <option value="">Alle bronnen</option>
+            <option value="scraper">Scraper</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="handmatig">Handmatig</option>
+            <option value="website">Website</option>
+            <option value="overig">Overig</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="filter-datum-van">Toegevoegd van / tot</label>
+          <div class="veld-paar">
+            <input type="date" id="filter-datum-van">
+            <input type="date" id="filter-datum-tot">
+          </div>
+        </div>
+
+        <label class="checkbox-regel">
+          <input type="checkbox" id="filter-geen-contact"> Langer dan 14 dagen geen contact
+        </label>
+
+        <div class="field">
+          <label for="filter-leadscore">Minimale leadscore</label>
+          <select id="filter-leadscore">
+            <option value="">Alle scores</option>
+            <option value="1">1 ster of hoger</option>
+            <option value="2">2 sterren of hoger</option>
+            <option value="3">3 sterren of hoger</option>
+            <option value="4">4 sterren of hoger</option>
+            <option value="5">5 sterren</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="filter-opgericht-van">Opgericht van / tot</label>
+          <div class="veld-paar">
+            <input type="number" id="filter-opgericht-van" placeholder="Vanaf" min="1800" max="2100">
+            <input type="number" id="filter-opgericht-tot" placeholder="T/m" min="1800" max="2100">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="filter-website">Heeft website</label>
+          <select id="filter-website">
+            <option value="">Alles</option>
+            <option value="ja">Ja</option>
+            <option value="nee">Nee</option>
+          </select>
+        </div>
+
+        <button type="button" id="reset-filters" class="secondary">Filters wissen</button>
       </form>
 
       <button type="button" id="generate-fake-leads" class="secondary">Genereer voorbeeldleads</button>
@@ -122,14 +188,56 @@
     <main class="main">
       <div id="pipeline-summary" class="pipeline-summary"></div>
 
+      <div class="lijst-balk">
+        <input type="search" id="zoek-bedrijfsnaam" placeholder="Zoek op bedrijfsnaam…">
+        <span id="lead-aantal" class="lead-aantal"></span>
+        <button type="button" id="export-btn" class="secondary">Exporteer naar Excel</button>
+      </div>
+
       <div id="bulk-actions" class="bulk-actions hidden">
         <span id="bulk-count">0 geselecteerd</span>
+        <select id="bulk-status">
+          <option value="">Status wijzigen naar…</option>
+          <option value="nieuw">Nieuw</option>
+          <option value="benaderd">Benaderd</option>
+          <option value="gereageerd">Gereageerd</option>
+          <option value="afspraak">Afspraak</option>
+          <option value="klant">Klant</option>
+          <option value="afgewezen">Afgewezen</option>
+        </select>
+        <select id="bulk-leadscore">
+          <option value="">Leadscore zetten…</option>
+          <option value="1">★</option>
+          <option value="2">★★</option>
+          <option value="3">★★★</option>
+          <option value="4">★★★★</option>
+          <option value="5">★★★★★</option>
+        </select>
+        <button type="button" id="bulk-apply-btn">Toepassen</button>
         <button type="button" id="bulk-send-btn" class="secondary">✉️📤 Schrijf &amp; verstuur mails</button>
+        <button type="button" id="bulk-delete-btn" class="secondary gevaar">Verwijderen</button>
         <button type="button" id="bulk-clear-btn" class="secondary">Selectie wissen</button>
       </div>
       <p id="bulk-progress" class="bulk-progress hidden"></p>
 
-      <div id="lead-grid" class="lead-grid"></div>
+      <div class="tabel-wrap">
+        <table class="lead-tabel">
+          <thead>
+            <tr>
+              <th class="kolom-select"><input type="checkbox" id="select-alles" title="Selecteer alle gefilterde leads"></th>
+              <th class="sorteerbaar" data-sorteer="bedrijfsnaam">Bedrijf</th>
+              <th class="sorteerbaar" data-sorteer="status">Status</th>
+              <th class="sorteerbaar" data-sorteer="leadscore">Score</th>
+              <th>Branche</th>
+              <th>Locatie</th>
+              <th class="sorteerbaar" data-sorteer="aangemaakt_op">Toegevoegd</th>
+              <th class="sorteerbaar" data-sorteer="laatste_contact">Laatste contact</th>
+              <th>Acties</th>
+            </tr>
+          </thead>
+          <tbody id="lead-tabel-body"></tbody>
+        </table>
+      </div>
       <p id="empty-state" class="empty-state hidden"></p>
     </main>
   </div>
