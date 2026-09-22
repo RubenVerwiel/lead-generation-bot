@@ -7,7 +7,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "start-local": "set -a && . ./.env.local && set +a && vercel dev"
+    "start-local": "set -a && . ./.env.local && set +a && vercel dev",
+    "backup": "node backup/maak-backup.js"
   },
   "dependencies": {
     "nodemailer": "^10.0.10"

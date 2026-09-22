@@ -6,7 +6,7 @@ import {
   createNotitie,
   fetchMailHistorie,
   fetchStatusHistorie,
-  logMail,
+  activeSchema,
 } from './leads.js';
 import { setTestmodus, isTestmodus } from './testmodus.js';
 import { generateMail, sendMail, splitMail } from './mail.js';
@@ -108,6 +108,11 @@ leadForm.addEventListener('submit', async (e) => {
     notities: document.getElementById('veld-notities').value.trim(),
   };
 
+  const knop = leadForm.querySelector('button[type="submit"]');
+  const origineel = knop.textContent;
+  knop.disabled = true;
+  knop.textContent = 'Opslaan…';
+
   try {
     lead = await updateLead(leadId, patch);
     vulFormulier();
@@ -118,6 +123,9 @@ leadForm.addEventListener('submit', async (e) => {
   } catch (err) {
     opslaanMelding.textContent = 'Opslaan mislukt: ' + err.message;
     opslaanMelding.className = 'melding melding-fout';
+  } finally {
+    knop.disabled = false;
+    knop.textContent = origineel;
   }
 });
 
@@ -129,12 +137,20 @@ notitieForm.addEventListener('submit', async (e) => {
   const tekst = document.getElementById('notitie-tekst').value.trim();
   if (!tekst) return;
 
+  const knop = notitieForm.querySelector('button[type="submit"]');
+  const origineel = knop.textContent;
+  knop.disabled = true;
+  knop.textContent = 'Opslaan…';
+
   try {
     await createNotitie(leadId, tekst);
     notitieForm.reset();
     await renderTijdlijn();
   } catch (err) {
     notitieFout.textContent = 'Notitie opslaan mislukt: ' + err.message;
+  } finally {
+    knop.disabled = false;
+    knop.textContent = origineel;
   }
 });
 
@@ -254,16 +270,11 @@ mailActies.addEventListener('click', async (e) => {
 
     try {
       const { subject, body } = splitMail(lead.mail_concept);
-      await sendMail({ to: lead.email, subject, body });
-      await logMail(leadId, {
-        onderwerp: subject,
-        inhoud: body,
-        type: lead.laatste_contact ? 'follow_up' : 'eerste_mail',
-      });
-      lead = await updateLead(leadId, {
-        laatste_contact: new Date().toISOString(),
-        ...(lead.status === 'nieuw' ? { status: 'benaderd' } : {}),
-      });
+      // De server controleert niet-benaderen, daglimiet en dubbele verzending,
+      // en legt de mail zelf vast in de mailhistorie.
+      await sendMail({ leadId, schema: activeSchema(), subject, body });
+      if (lead.status === 'nieuw') await updateLead(leadId, { status: 'benaderd' });
+      lead = await fetchLeadById(leadId);
       vulFormulier();
       renderMailActies();
       await renderTijdlijn();

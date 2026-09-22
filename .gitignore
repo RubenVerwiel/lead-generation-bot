@@ -1,7 +1,13 @@
-.env
-.env.local
-.env*.local
 node_modules
 .vercel
-.env*
 .claude/settings.local.json
+
+# Alles met echte sleutels blijft buiten git
+.env
+.env.*
+.env*
+
+# Deze uitzondering staat bewust als laatste: een latere regel wint van een
+# eerdere. De Vercel CLI voegt zelf soms .env* onderaan toe — blijft die
+# daarna staan, zet deze regel er dan weer onder.
+!.env.example

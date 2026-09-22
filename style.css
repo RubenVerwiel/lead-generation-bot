@@ -678,3 +678,19 @@ button.gevaar:hover { background: #fef2f2; }
   border-color: var(--status-color, var(--accent));
   box-shadow: 0 0 0 2px var(--status-color, var(--accent));
 }
+
+/* Concepten beoordelen voor verzending */
+.modal-breed { max-width: 700px; max-height: 85vh; overflow-y: auto; }
+.concept-lijst { display: grid; gap: 14px; margin: 14px 0; }
+
+.concept-item {
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.concept-kop { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-weight: 400; }
+.concept-kop input { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; }
+.concept-ontvanger { display: block; font-size: 0.78rem; color: var(--text-muted); }
+.concept-onderwerp { font-size: 0.82rem; font-weight: 600; margin: 8px 0 0; }

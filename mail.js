@@ -40,7 +40,9 @@ export function splitMail(mailText) {
   return { subject: 'Bericht', body: mailText.trim() };
 }
 
-export async function sendMail({ to, subject, body }) {
+// De server bepaalt zelf naar welk adres de mail gaat (op basis van lead_id) en
+// voert daar alle controles uit: niet-benaderen, daglimiet en dubbele verzending.
+export async function sendMail({ leadId, schema, subject, body }) {
   const token = await getAccessToken();
   if (!token) throw new Error('Je bent niet (meer) ingelogd.');
 
@@ -50,7 +52,7 @@ export async function sendMail({ to, subject, body }) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ to, subject, body }),
+    body: JSON.stringify({ lead_id: leadId, schema, subject, body }),
   });
 
   const result = await response.json();

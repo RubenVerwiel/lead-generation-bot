@@ -135,6 +135,10 @@
           </select>
         </div>
 
+        <label class="checkbox-regel">
+          <input type="checkbox" id="filter-verwijderd"> Toon verwijderde leads
+        </label>
+
         <button type="button" id="reset-filters" class="secondary">Filters wissen</button>
       </form>
 
@@ -215,8 +219,9 @@
           <option value="5">★★★★★</option>
         </select>
         <button type="button" id="bulk-apply-btn">Toepassen</button>
-        <button type="button" id="bulk-send-btn" class="secondary">✉️📤 Schrijf &amp; verstuur mails</button>
+        <button type="button" id="bulk-send-btn" class="secondary">✉️ Schrijf concepten</button>
         <button type="button" id="bulk-delete-btn" class="secondary gevaar">Verwijderen</button>
+        <button type="button" id="bulk-herstel-btn" class="secondary hidden">Herstellen</button>
         <button type="button" id="bulk-clear-btn" class="secondary">Selectie wissen</button>
       </div>
       <p id="bulk-progress" class="bulk-progress hidden"></p>
@@ -241,6 +246,24 @@
       </div>
       <p id="empty-state" class="empty-state hidden"></p>
     </main>
+  </div>
+
+  <!-- CONCEPTEN BEOORDELEN VOOR VERZENDING -->
+  <div id="concept-modal" class="modal-overlay hidden">
+    <div class="modal modal-breed">
+      <h2>Concepten beoordelen</h2>
+      <p class="toelichting">
+        Er is nog niets verstuurd. Lees de concepten na, vink af wat weg mag,
+        en klik daarna op versturen.
+      </p>
+      <div id="concept-lijst" class="concept-lijst"></div>
+      <p id="concept-resultaat" class="melding"></p>
+      <div class="modal-actions">
+        <button type="button" id="concept-verstuur-btn">Verstuur aangevinkte mails</button>
+        <button type="button" id="concept-sluit-btn" class="secondary">Sluiten</button>
+      </div>
+      <p class="toelichting"><span id="concept-aantal"></span> · elke mail krijgt automatisch een afmeldregel onderaan.</p>
+    </div>
   </div>
 
   <!-- INSTELLINGEN -->

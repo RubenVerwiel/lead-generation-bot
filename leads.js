@@ -4,7 +4,7 @@ import { isTestmodus } from './testmodus.js';
 // Dit bestand is de enige plek die weet welk schema actief is (testomgeving of
 // productie) en is ook het punt waar later een echte databron (KvK-API,
 // Apollo) aangesloten kan worden zonder de rest van de app aan te passen.
-function activeSchema() {
+export function activeSchema() {
   return isTestmodus() ? 'testfase_leadgeneration' : 'public';
 }
 
@@ -23,6 +23,9 @@ export async function fetchLeads(filters = {}, sortering = {}) {
   let query = leadsTable()
     .select('*')
     .order(kolom, { ascending: oplopend, nullsFirst: false });
+
+  // Verwijderde leads blijven bestaan maar vallen standaard buiten beeld.
+  query = query.eq('verwijderd', Boolean(filters.toonVerwijderd));
 
   if (filters.zoekterm) query = query.ilike('bedrijfsnaam', `%${filters.zoekterm}%`);
   if (filters.branche) query = query.ilike('branche', `%${filters.branche}%`);
@@ -60,8 +63,20 @@ export async function createLead(lead) {
   return data;
 }
 
+// Geen echte verwijdering: de lead verdwijnt uit beeld maar blijft bestaan,
+// samen met zijn notities, mailhistorie en statushistorie. Zo is een vergissing
+// terug te draaien met herstelLeads().
 export async function deleteLeads(ids) {
-  const { error } = await leadsTable().delete().in('id', ids);
+  const { error } = await leadsTable()
+    .update({ verwijderd: true, verwijderd_op: new Date().toISOString() })
+    .in('id', ids);
+  if (error) throw error;
+}
+
+export async function herstelLeads(ids) {
+  const { error } = await leadsTable()
+    .update({ verwijderd: false, verwijderd_op: null })
+    .in('id', ids);
   if (error) throw error;
 }
 

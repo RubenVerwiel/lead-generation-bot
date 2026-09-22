@@ -4,9 +4,10 @@ import {
   createLead,
   updateLead,
   deleteLeads,
+  herstelLeads,
   generateFakeLeads,
-  logMail,
   zoekDuplicaat,
+  activeSchema,
 } from './leads.js';
 import { isTestmodus, setTestmodus, onTestmodusChange } from './testmodus.js';
 import { getSettings, saveSettings } from './settings.js';
@@ -63,10 +64,18 @@ const bulkCountEl = document.getElementById('bulk-count');
 const bulkSendBtn = document.getElementById('bulk-send-btn');
 const bulkClearBtn = document.getElementById('bulk-clear-btn');
 const bulkProgress = document.getElementById('bulk-progress');
+const conceptModal = document.getElementById('concept-modal');
+const conceptLijst = document.getElementById('concept-lijst');
+const conceptAantal = document.getElementById('concept-aantal');
+const conceptResultaat = document.getElementById('concept-resultaat');
+const conceptVerstuurBtn = document.getElementById('concept-verstuur-btn');
+const conceptSluitBtn = document.getElementById('concept-sluit-btn');
+
 const bulkStatusKeuze = document.getElementById('bulk-status');
 const bulkLeadscoreKeuze = document.getElementById('bulk-leadscore');
 const bulkApplyBtn = document.getElementById('bulk-apply-btn');
 const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+const bulkHerstelBtn = document.getElementById('bulk-herstel-btn');
 
 let currentFilters = {};
 let currentLeads = [];
@@ -78,6 +87,21 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str ?? '';
   return div.innerHTML;
+}
+
+// Schakelt een knop uit terwijl de actie loopt en zet 'm daarna terug. Zo kan
+// dubbel klikken nooit tot een dubbele actie leiden, ook niet bij een trage
+// verbinding of als er iets misgaat.
+async function metLaadstatus(knop, bezigTekst, actie) {
+  const origineel = knop.textContent;
+  knop.disabled = true;
+  knop.textContent = bezigTekst;
+  try {
+    return await actie();
+  } finally {
+    knop.disabled = false;
+    knop.textContent = origineel;
+  }
 }
 
 function showApp() {
@@ -295,6 +319,7 @@ function leesFilters() {
     opgerichtVan: document.getElementById('filter-opgericht-van').value,
     opgerichtTot: document.getElementById('filter-opgericht-tot').value,
     heeftWebsite: document.getElementById('filter-website').value,
+    toonVerwijderd: document.getElementById('filter-verwijderd').checked,
   };
 }
 
@@ -404,8 +429,10 @@ exportBtn.addEventListener('click', async () => {
 generateFakeBtn.addEventListener('click', async () => {
   generateFakeError.textContent = '';
   try {
-    await generateFakeLeads(currentFilters, 5);
-    loadLeads();
+    await metLaadstatus(generateFakeBtn, 'Bezig…', async () => {
+      await generateFakeLeads(currentFilters, 5);
+      await loadLeads();
+    });
   } catch (err) {
     generateFakeError.textContent = 'Kon voorbeeldleads niet genereren: ' + err.message;
   }
@@ -427,19 +454,22 @@ addLeadForm.addEventListener('submit', async (e) => {
     notities: document.getElementById('add-notities').value.trim(),
   };
 
+  const knop = addLeadForm.querySelector('button[type="submit"]');
   try {
-    // Ontdubbeling: bestaat deze bedrijfsnaam of dit website-domein al?
-    const bestaande = await zoekDuplicaat(lead);
-    if (bestaande) {
-      const link = `lead-detail.html?id=${bestaande.id}${isTestmodus() ? '' : '&test=0'}`;
-      addLeadError.innerHTML =
-        `Deze lead bestaat al: <a href="${link}">${escapeHtml(bestaande.bedrijfsnaam)}</a> — er is geen duplicaat aangemaakt.`;
-      return;
-    }
+    await metLaadstatus(knop, 'Bezig…', async () => {
+      // Ontdubbeling: bestaat deze bedrijfsnaam of dit website-domein al?
+      const bestaande = await zoekDuplicaat(lead);
+      if (bestaande) {
+        const link = `lead-detail.html?id=${bestaande.id}${isTestmodus() ? '' : '&test=0'}`;
+        addLeadError.innerHTML =
+          `Deze lead bestaat al: <a href="${link}">${escapeHtml(bestaande.bedrijfsnaam)}</a> — er is geen duplicaat aangemaakt.`;
+        return;
+      }
 
-    await createLead(lead);
-    addLeadForm.reset();
-    loadLeads();
+      await createLead(lead);
+      addLeadForm.reset();
+      await loadLeads();
+    });
   } catch (err) {
     addLeadError.textContent = 'Kon lead niet toevoegen: ' + err.message;
   }
@@ -536,17 +566,14 @@ leadGrid.addEventListener('click', async (e) => {
 
     try {
       const { subject, body } = splitMail(lead.mail_concept);
-      await sendMail({ to: lead.email, subject, body });
-      await logMail(lead.id, {
-        onderwerp: subject,
-        inhoud: body,
-        type: lead.laatste_contact ? 'follow_up' : 'eerste_mail',
-      });
+      // De server controleert zelf op niet-benaderen, daglimiet en dubbele
+      // verzending, en legt de mail daarna vast in de mailhistorie.
+      await sendMail({ leadId: id, schema: activeSchema(), subject, body });
       const wijziging = {
         laatste_contact: new Date().toISOString(),
         ...(lead.status === 'nieuw' ? { status: 'benaderd' } : {}),
       };
-      await updateLead(id, wijziging);
+      if (lead.status === 'nieuw') await updateLead(id, { status: 'benaderd' });
       werkLeadsBijInLijst([id], wijziging);
     } catch (err) {
       errorEl.textContent = 'Versturen mislukt: ' + err.message;
@@ -573,6 +600,11 @@ function updateBulkBar() {
   const count = selectedLeadIds.size;
   bulkActionsBar.classList.toggle('hidden', count === 0);
   bulkCountEl.textContent = `${count} geselecteerd`;
+
+  // In de prullenbakweergave hoort herstellen, niet nog eens verwijderen.
+  const inPrullenbak = Boolean(currentFilters.toonVerwijderd);
+  bulkDeleteBtn.classList.toggle('hidden', inPrullenbak);
+  bulkHerstelBtn.classList.toggle('hidden', !inPrullenbak);
 }
 
 bulkClearBtn.addEventListener('click', () => {
@@ -632,86 +664,159 @@ bulkDeleteBtn.addEventListener('click', async () => {
   if (ids.length === 0) return;
 
   const bevestigd = window.confirm(
-    `Weet je zeker dat je ${ids.length} lead(s) definitief wilt verwijderen?\n\n` +
-      'Dit kan niet ongedaan worden gemaakt: ook de bijbehorende notities, ' +
-      'mailhistorie en statushistorie worden verwijderd.'
+    `${ids.length} lead(s) verwijderen?\n\n` +
+      'Ze verdwijnen uit je lijst, maar blijven met hun notities en historie ' +
+      'bewaard. Je kunt ze terughalen via "Toon verwijderde leads" in de zijbalk.'
   );
   if (!bevestigd) return;
 
+  bulkDeleteBtn.disabled = true;
   bulkProgress.classList.remove('hidden');
   bulkProgress.textContent = `Bezig met verwijderen van ${ids.length} lead(s)…`;
 
   try {
     await deleteLeads(ids);
-    bulkProgress.textContent = `${ids.length} lead(s) verwijderd.`;
+    bulkProgress.textContent = `${ids.length} lead(s) verwijderd. Terug te halen via "Toon verwijderde leads".`;
     selectedLeadIds.clear();
     updateBulkBar();
     await loadLeads();
   } catch (err) {
     bulkProgress.textContent = 'Verwijderen mislukt: ' + err.message;
   }
+  bulkDeleteBtn.disabled = false;
+  setTimeout(() => bulkProgress.classList.add('hidden'), 5000);
+});
+
+bulkHerstelBtn.addEventListener('click', async () => {
+  const ids = Array.from(selectedLeadIds);
+  if (ids.length === 0) return;
+
+  bulkHerstelBtn.disabled = true;
+  bulkProgress.classList.remove('hidden');
+  bulkProgress.textContent = `Bezig met herstellen van ${ids.length} lead(s)…`;
+
+  try {
+    await herstelLeads(ids);
+    bulkProgress.textContent = `${ids.length} lead(s) hersteld.`;
+    selectedLeadIds.clear();
+    updateBulkBar();
+    await loadLeads();
+  } catch (err) {
+    bulkProgress.textContent = 'Herstellen mislukt: ' + err.message;
+  }
+  bulkHerstelBtn.disabled = false;
   setTimeout(() => bulkProgress.classList.add('hidden'), 4000);
 });
 
-// --- Voor alle geselecteerde leads: mail schrijven, opslaan én versturen ---
+// --- Stap 1 van 2: voor alle geselecteerde leads een concept laten schrijven ---
+// Er wordt hier nog niets verstuurd. De concepten verschijnen daarna in een
+// overzicht dat je eerst zelf beoordeelt.
 bulkSendBtn.addEventListener('click', async () => {
   const ids = Array.from(selectedLeadIds);
   if (ids.length === 0) return;
 
-  const testWarning = isTestmodus()
-    ? '\n\nLet op: je zit in testmodus met nepleads en verzonnen e-mailadressen — deze mails zullen waarschijnlijk bouncen.'
-    : '';
-  const confirmed = window.confirm(
-    `Weet je zeker dat je voor ${ids.length} lead(s) een mail wilt laten schrijven én versturen?${testWarning}`
-  );
-  if (!confirmed) return;
+  const teMailen = ids
+    .map((id) => currentLeads.find((l) => l.id === id))
+    .filter((lead) => lead && !lead.niet_benaderen);
+  const overgeslagen = ids.length - teMailen.length;
+
+  if (teMailen.length === 0) {
+    bulkProgress.classList.remove('hidden');
+    bulkProgress.textContent = 'Alle geselecteerde leads staan op "niet benaderen" — er is niets te mailen.';
+    return;
+  }
 
   bulkSendBtn.disabled = true;
   bulkProgress.classList.remove('hidden');
 
-  let success = 0;
-  let failed = 0;
-  let overgeslagen = 0;
+  const concepten = [];
+  let mislukt = 0;
 
-  for (let i = 0; i < ids.length; i++) {
-    const lead = currentLeads.find((l) => l.id === ids[i]);
-    if (!lead) continue;
-
-    // AVG/opt-out: deze leads mogen nooit in een mailflow terechtkomen.
-    if (lead.niet_benaderen) {
-      overgeslagen++;
-      continue;
-    }
-
-    bulkProgress.textContent = `Bezig: ${i + 1} van ${ids.length} (${lead.bedrijfsnaam})...`;
-
+  for (let i = 0; i < teMailen.length; i++) {
+    const lead = teMailen[i];
+    bulkProgress.textContent = `Concept schrijven: ${i + 1} van ${teMailen.length} (${lead.bedrijfsnaam})…`;
     try {
       const mailText = await generateMail(lead);
       await updateLead(lead.id, { mail_concept: mailText });
-      const { subject, body } = splitMail(mailText);
-      await sendMail({ to: lead.email, subject, body });
-      await logMail(lead.id, {
-        onderwerp: subject,
-        inhoud: body,
-        type: lead.laatste_contact ? 'follow_up' : 'eerste_mail',
-      });
-      await updateLead(lead.id, {
-        laatste_contact: new Date().toISOString(),
-        ...(lead.status === 'nieuw' ? { status: 'benaderd' } : {}),
-      });
-      success++;
+      concepten.push({ lead, mailText });
     } catch (err) {
-      console.error(`Fout bij ${lead.bedrijfsnaam}:`, err);
-      failed++;
+      console.error(`Concept mislukt bij ${lead.bedrijfsnaam}:`, err);
+      mislukt++;
     }
   }
 
   bulkProgress.textContent =
-    `Klaar: ${success} verstuurd, ${failed} mislukt` +
-    (overgeslagen ? `, ${overgeslagen} overgeslagen (niet benaderen).` : '.');
-  selectedLeadIds.clear();
+    `${concepten.length} concept(en) klaar om te beoordelen` +
+    (mislukt ? `, ${mislukt} mislukt` : '') +
+    (overgeslagen ? `, ${overgeslagen} overgeslagen (niet benaderen)` : '') + '.';
+
   bulkSendBtn.disabled = false;
+  werkLeadsBijInLijst(concepten.map((c) => c.lead.id), {});
+  if (concepten.length > 0) toonConceptOverzicht(concepten);
+});
+
+// --- Stap 2 van 2: de concepten beoordelen en pas daarna versturen ---
+function toonConceptOverzicht(concepten) {
+  conceptLijst.innerHTML = concepten
+    .map(({ lead, mailText }) => {
+      const { subject, body } = splitMail(mailText);
+      return `
+      <div class="concept-item">
+        <label class="concept-kop">
+          <input type="checkbox" class="concept-select" data-id="${lead.id}" checked>
+          <span>
+            <strong>${escapeHtml(lead.bedrijfsnaam)}</strong>
+            <span class="concept-ontvanger">${escapeHtml(lead.email ?? 'geen e-mailadres')}</span>
+          </span>
+        </label>
+        <div class="concept-onderwerp">${escapeHtml(subject)}</div>
+        <pre class="mail-text">${escapeHtml(body)}</pre>
+      </div>`;
+    })
+    .join('');
+
+  conceptAantal.textContent = `${concepten.length} concept(en)`;
+  conceptResultaat.textContent = '';
+  conceptModal.classList.remove('hidden');
+}
+
+conceptSluitBtn.addEventListener('click', () => conceptModal.classList.add('hidden'));
+
+conceptVerstuurBtn.addEventListener('click', async () => {
+  const gekozen = Array.from(document.querySelectorAll('.concept-select:checked')).map((v) => v.dataset.id);
+  if (gekozen.length === 0) {
+    conceptResultaat.textContent = 'Vink minstens één concept aan.';
+    return;
+  }
+
+  const waarschuwing = isTestmodus()
+    ? '\n\nLet op: je zit in testmodus met verzonnen e-mailadressen — deze mails zullen waarschijnlijk bouncen.'
+    : '';
+  if (!window.confirm(`${gekozen.length} mail(s) nu definitief versturen?${waarschuwing}`)) return;
+
+  conceptVerstuurBtn.disabled = true;
+  let verstuurd = 0;
+  const fouten = [];
+
+  for (let i = 0; i < gekozen.length; i++) {
+    const lead = currentLeads.find((l) => l.id === gekozen[i]);
+    if (!lead?.mail_concept) continue;
+
+    conceptResultaat.textContent = `Versturen: ${i + 1} van ${gekozen.length} (${lead.bedrijfsnaam})…`;
+    try {
+      const { subject, body } = splitMail(lead.mail_concept);
+      await sendMail({ leadId: lead.id, schema: activeSchema(), subject, body });
+      if (lead.status === 'nieuw') await updateLead(lead.id, { status: 'benaderd' });
+      verstuurd++;
+    } catch (err) {
+      fouten.push(`${lead.bedrijfsnaam}: ${err.message}`);
+    }
+  }
+
+  conceptResultaat.textContent =
+    `${verstuurd} verstuurd.` + (fouten.length ? ` Niet gelukt — ${fouten.join(' · ')}` : '');
+  conceptVerstuurBtn.disabled = false;
+  selectedLeadIds.clear();
   updateBulkBar();
   await loadLeads();
-  setTimeout(() => bulkProgress.classList.add('hidden'), 5000);
 });
