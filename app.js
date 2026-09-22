@@ -378,7 +378,12 @@ selectAllesVinkje.addEventListener('change', () => {
 
 // --- Excel-export van de huidige selectie op het scherm ---
 exportBtn.addEventListener('click', async () => {
-  if (currentLeads.length === 0) return;
+  if (currentLeads.length === 0) {
+    bulkProgress.classList.remove('hidden');
+    bulkProgress.textContent = 'Er is niets te exporteren: geen leads in de huidige selectie.';
+    setTimeout(() => bulkProgress.classList.add('hidden'), 4000);
+    return;
+  }
 
   exportBtn.disabled = true;
   exportBtn.textContent = 'Bezig…';

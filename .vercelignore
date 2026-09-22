@@ -1,0 +1,6 @@
+# Deze bestanden horen bij het project maar niet op het web. Ze bevatten geen
+# wachtwoorden, maar er is ook geen enkele reden om je databasestructuur en je
+# back-upscript vanaf je website te laten downloaden.
+database/
+backup/
+.env.example

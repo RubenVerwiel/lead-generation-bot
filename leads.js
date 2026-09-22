@@ -94,16 +94,38 @@ export function haalDomein(url) {
     .split('/')[0] || null;
 }
 
+// Haalt rechtsvormen en leestekens weg, zodat "Acme B.V.", "Acme BV" en
+// "acme  b.v" als hetzelfde bedrijf worden herkend.
+export function normaliseerBedrijfsnaam(naam) {
+  if (!naam) return '';
+  return naam
+    .toLowerCase()
+    .replace(/[.,'"`&()-]/g, ' ')
+    .replace(/\b(b ?v|n ?v|v o f|vof|cv|holding|group|groep)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Zoekt een bestaande lead met dezelfde bedrijfsnaam of hetzelfde
 // website-domein. Geeft de gevonden lead terug, of null.
 export async function zoekDuplicaat({ bedrijfsnaam, website_url }) {
   if (bedrijfsnaam) {
-    const { data, error } = await leadsTable()
-      .select('*')
-      .ilike('bedrijfsnaam', bedrijfsnaam.trim())
-      .limit(1);
-    if (error) throw error;
-    if (data.length) return data[0];
+    // Eerst ruim zoeken op het eerste kenmerkende woord, daarna pas precies
+    // vergelijken op de genormaliseerde naam. Een database-vergelijking alleen
+    // zou "Acme B.V." en "Acme BV" als verschillend zien.
+    const genormaliseerd = normaliseerBedrijfsnaam(bedrijfsnaam);
+    const eersteWoord = genormaliseerd.split(' ')[0];
+
+    if (eersteWoord) {
+      const { data, error } = await leadsTable()
+        .select('*')
+        .ilike('bedrijfsnaam', `%${eersteWoord}%`)
+        .limit(50);
+      if (error) throw error;
+
+      const match = data.find((l) => normaliseerBedrijfsnaam(l.bedrijfsnaam) === genormaliseerd);
+      if (match) return match;
+    }
   }
 
   const domein = haalDomein(website_url);
