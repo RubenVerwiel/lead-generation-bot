@@ -11,6 +11,7 @@
     "backup": "node backup/maak-backup.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
     "nodemailer": "^10.0.10"
   }
 }

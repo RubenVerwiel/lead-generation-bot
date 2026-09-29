@@ -694,3 +694,13 @@ button.gevaar:hover { background: #fef2f2; }
 .concept-kop input { accent-color: var(--accent); width: 16px; height: 16px; margin-top: 2px; }
 .concept-ontvanger { display: block; font-size: 0.78rem; color: var(--text-muted); }
 .concept-onderwerp { font-size: 0.82rem; font-weight: 600; margin: 8px 0 0; }
+
+.modal-subkop {
+  margin-top: 24px !important;
+  padding-top: 20px;
+  border-top: 1px solid var(--panel-border);
+}
+
+/* Duidelijk maken dat je naast het venster kunt klikken om het te sluiten */
+.modal-overlay { cursor: pointer; }
+.modal { cursor: default; }

@@ -14,6 +14,46 @@ const HERHAAL_BLOKKADE_MINUTEN = 10;
 
 const TOEGESTANE_SCHEMAS = ['public', 'testfase_leadgeneration'];
 
+// Elk id in de database is een uuid (zie database/schema.sql). We controleren
+// dat hier hard, omdat het id verderop in het webadres van de database-vraag
+// terechtkomt. Zonder deze controle zou iemand er extra zoekopdrachten in
+// kunnen meesmokkelen. De beveiligingsregels van de database vangen dat al af,
+// maar een id dat geen id is hoort sowieso nooit zo ver te komen.
+const UUID_PATROON = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Middernacht van "vandaag" volgens de Nederlandse klok, als absoluut tijdstip.
+//
+// Dit moet expliciet, want deze code draait op een server van Vercel en die
+// staat op UTC. Zonder deze functie zou "vandaag" in de zomer om 02:00 onze
+// tijd beginnen: een mail van dinsdagavond 23:30 telde dan al mee voor
+// woensdag, en woensdag had je stiekem een dubbele daglimiet.
+//
+// Nederland loopt 1 uur voor op UTC in de winter en 2 uur in de zomer. Welke
+// van de twee het is vragen we op bij de tijdzonegegevens van Node zelf, zodat
+// het verzetten van de klok in maart en oktober vanzelf goed gaat.
+const NL_KLOK = new Intl.DateTimeFormat('sv-SE', {
+  timeZone: 'Europe/Amsterdam',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', second: '2-digit',
+  hour12: false,
+});
+
+export function middernachtInNederland(nu = new Date()) {
+  // Leest de Nederlandse wandklok af en doet alsof het UTC is. Het verschil
+  // met het echte tijdstip is precies de tijdzone-afwijking van dat moment.
+  const alsofUtc = (tijdstip) => new Date(NL_KLOK.format(tijdstip).replace(' ', 'T') + 'Z');
+
+  const nlMiddernacht = alsofUtc(nu);
+  nlMiddernacht.setUTCHours(0, 0, 0, 0);
+
+  let resultaat = new Date(nlMiddernacht.getTime() - (alsofUtc(nu).getTime() - nu.getTime()));
+
+  // Op de twee dagen per jaar dat de klok verzet wordt, geldt om middernacht
+  // een andere afwijking dan nu. Deze correctieronde zet dat recht.
+  resultaat = new Date(nlMiddernacht.getTime() - (alsofUtc(resultaat).getTime() - resultaat.getTime()));
+  return resultaat;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -33,6 +73,9 @@ export default async function handler(req, res) {
 
   if (!lead_id || !subject || !body) {
     return res.status(400).json({ error: 'Lead, onderwerp of inhoud ontbreekt.' });
+  }
+  if (!UUID_PATROON.test(String(lead_id))) {
+    return res.status(400).json({ error: 'Ongeldig lead-id.' });
   }
   if (!TOEGESTANE_SCHEMAS.includes(schema)) {
     return res.status(400).json({ error: 'Onbekende omgeving.' });
@@ -90,8 +133,7 @@ export default async function handler(req, res) {
     // Geteld over beide omgevingen samen: ook testmails gaan echt de deur uit
     // via Gmail en tellen dus mee voor je afzenderreputatie.
     const daglimiet = Number(process.env.MAX_MAILS_PER_DAG) || STANDAARD_DAGLIMIET;
-    const vandaag = new Date();
-    vandaag.setHours(0, 0, 0, 0);
+    const vandaag = middernachtInNederland();
 
     let vandaagVerstuurd = 0;
     for (const s of TOEGESTANE_SCHEMAS) {
@@ -137,34 +179,67 @@ export default async function handler(req, res) {
     });
 
     // --- 7. Vastleggen ---
+    // Vanaf hier is de mail echt de deur uit en valt er niets meer terug te
+    // draaien. Wat hierna misgaat mag daarom NOOIT als "versturen mislukt"
+    // naar buiten komen: dan zou je opnieuw klikken en dezelfde lead een
+    // tweede keer mailen. Het komt als waarschuwing mee bij een geslaagde
+    // verzending.
+    //
     // De registratie gebeurt hier en niet in de browser, zodat de daglimiet en
     // de herhaalcontrole altijd op volledige gegevens werken.
-    const schrijf = (pad, inhoud, extra = {}) =>
-      fetch(`${SUPABASE_URL}/rest/v1/${pad}`, {
-        method: extra.method ?? 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          apikey: SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json',
-          'Content-Profile': schema,
-        },
-        body: JSON.stringify(inhoud),
-      });
+    //
+    // Deze functie gooit met opzet geen fout, maar geeft de fouttekst terug
+    // (of null als alles goed ging).
+    const schrijf = async (pad, inhoud, extra = {}) => {
+      try {
+        const antwoord = await fetch(`${SUPABASE_URL}/rest/v1/${pad}`, {
+          method: extra.method ?? 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+            'Content-Profile': schema,
+          },
+          body: JSON.stringify(inhoud),
+        });
+        return antwoord.ok ? null : `${antwoord.status} ${await antwoord.text()}`;
+      } catch (err) {
+        return err.message;
+      }
+    };
 
-    await schrijf('mail_historie', {
+    const waarschuwingen = [];
+
+    const historieFout = await schrijf('mail_historie', {
       lead_id: lead.id,
       onderwerp: subject,
       inhoud: volledigeTekst,
       type: lead.laatste_contact ? 'follow_up' : 'eerste_mail',
     });
+    if (historieFout) {
+      console.error('Vastleggen in mail_historie mislukt:', historieFout);
+      waarschuwingen.push(
+        'De mail is wel verstuurd, maar kon niet in de geschiedenis worden opgeslagen. ' +
+          'Hij telt daardoor niet mee voor de daglimiet en de dubbelcheck - mail deze lead niet nog een keer.'
+      );
+    }
 
-    await schrijf(`leads?id=eq.${lead.id}`, { laatste_contact: new Date().toISOString() }, { method: 'PATCH' });
+    const leadFout = await schrijf(
+      `leads?id=eq.${lead.id}`,
+      { laatste_contact: new Date().toISOString() },
+      { method: 'PATCH' }
+    );
+    if (leadFout) {
+      console.error('Bijwerken van laatste_contact mislukt:', leadFout);
+      waarschuwingen.push('De mail is wel verstuurd, maar "laatste contact" is bij deze lead niet bijgewerkt.');
+    }
 
     return res.status(200).json({
       success: true,
       verstuurd_naar: lead.email,
       vandaag_verstuurd: vandaagVerstuurd + 1,
       daglimiet,
+      ...(waarschuwingen.length ? { waarschuwingen } : {}),
     });
   } catch (err) {
     console.error('Verzendfout:', err);

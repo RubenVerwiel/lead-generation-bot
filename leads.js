@@ -16,12 +16,14 @@ function leadsTable() {
   return tabel('leads');
 }
 
-export async function fetchLeads(filters = {}, sortering = {}) {
+// kolommen: standaard alles. De pipeline-tellers vragen alleen 'status' op,
+// wat een stuk minder data over de lijn stuurt.
+export async function fetchLeads(filters = {}, sortering = {}, kolommen = '*') {
   const kolom = sortering.kolom || 'aangemaakt_op';
   const oplopend = sortering.oplopend ?? false;
 
   let query = leadsTable()
-    .select('*')
+    .select(kolommen)
     .order(kolom, { ascending: oplopend, nullsFirst: false });
 
   // Verwijderde leads blijven bestaan maar vallen standaard buiten beeld.

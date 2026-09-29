@@ -4,7 +4,7 @@
 // Gebruik:   npm run backup
 //
 // De bestanden komen NAAST je projectmap terecht, in:
-//   ~/Lead generation bot - backups/YYYY-MM-DD/
+//   ~/Downloads/AI-Minor/Lead generation bot - backups/YYYY-MM-DD/
 //
 // Bewust buiten de projectmap, zodat je back-ups niet in git belanden en je
 // projectmap overzichtelijk blijft.
@@ -58,7 +58,7 @@ async function main() {
   }
 
   const datum = new Date().toISOString().slice(0, 10);
-  const map = join(homedir(), 'Lead generation bot - backups', datum);
+  const map = join(homedir(), 'Downloads', 'AI-Minor', 'Lead generation bot - backups', datum);
   await mkdir(map, { recursive: true });
 
   const alles = {};

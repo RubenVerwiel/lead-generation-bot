@@ -4,3 +4,13 @@
 database/
 backup/
 .env.example
+
+# Bestanden met echte sleutels gaan nooit mee naar het web. Vercel houdt deze
+# normaal zelf al tegen, maar .env.local bevat je Gmail-wachtwoord en de
+# service-role-sleutel van de database — die omzeilt ALLE beveiligingsregels.
+# Daar wil je niet van uitgaan dat het vast wel goed gaat.
+#
+# .env.example staat hierboven al uitgesloten, dus daar is geen uitzondering
+# voor nodig.
+.env
+.env.*

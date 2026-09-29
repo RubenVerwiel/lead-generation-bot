@@ -8,6 +8,10 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config.js';
 // gegevens opvragen of wijzigen kan er niet mee.
 const TOEGESTANE_SCHEMAS = ['public', 'testfase_leadgeneration'];
 
+// Zie api/send-mail.js: een lead-id is altijd een uuid. Hier scheelt het ook
+// een onnodige vraag aan de database bij een link die duidelijk niet klopt.
+const UUID_PATROON = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function pagina(titel, tekst, kleur) {
   return `<!DOCTYPE html>
 <html lang="nl">
@@ -33,7 +37,7 @@ export default async function handler(req, res) {
   const { lead, omgeving } = req.query ?? {};
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
 
-  if (!lead || !TOEGESTANE_SCHEMAS.includes(omgeving)) {
+  if (!UUID_PATROON.test(String(lead ?? '')) || !TOEGESTANE_SCHEMAS.includes(omgeving)) {
     return res
       .status(400)
       .send(pagina('Ongeldige link', 'Deze afmeldlink klopt niet. Reageer op de mail als je geen berichten meer wilt ontvangen.', '#b91c1c'));

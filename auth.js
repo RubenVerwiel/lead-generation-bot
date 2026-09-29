@@ -8,6 +8,14 @@ export async function logout() {
   return supabase.auth.signOut();
 }
 
+// Wijzigt het wachtwoord van de ingelogde gebruiker. Werkt ook nadat je via
+// een herstelmail binnenkomt: die link logt je automatisch in, waarna je hier
+// een nieuw wachtwoord kunt zetten.
+export async function wijzigWachtwoord(nieuwWachtwoord) {
+  const { error } = await supabase.auth.updateUser({ password: nieuwWachtwoord });
+  if (error) throw error;
+}
+
 // Roept onChange meteen aan met de huidige sessie (of null), en daarna telkens
 // opnieuw zodra er wordt ingelogd, uitgelogd, of de sessie ververst wordt.
 // Dit is de enige plek die de app hoeft te raadplegen om te weten of iemand

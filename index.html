@@ -295,10 +295,26 @@
           <button type="button" id="settings-close" class="secondary">Sluiten</button>
         </div>
       </form>
+
+      <h2 class="modal-subkop">Wachtwoord wijzigen</h2>
+      <form id="wachtwoord-form">
+        <div class="field">
+          <label for="nieuw-wachtwoord">Nieuw wachtwoord</label>
+          <input type="password" id="nieuw-wachtwoord" minlength="12" autocomplete="new-password"
+                 placeholder="Minimaal 12 tekens">
+        </div>
+        <div class="field">
+          <label for="nieuw-wachtwoord-herhaal">Herhaal het wachtwoord</label>
+          <input type="password" id="nieuw-wachtwoord-herhaal" minlength="12" autocomplete="new-password">
+        </div>
+        <button type="submit">Wachtwoord wijzigen</button>
+        <p id="wachtwoord-melding" class="melding"></p>
+      </form>
     </div>
   </div>
 </div>
 
+<script src="vendor/supabase.js"></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

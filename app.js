@@ -1,4 +1,4 @@
-import { login, logout, watchAuth } from './auth.js';
+import { login, logout, watchAuth, wijzigWachtwoord } from './auth.js';
 import {
   fetchLeads,
   createLead,
@@ -58,6 +58,8 @@ const settingsBtn = document.getElementById('settings-btn');
 const settingsModal = document.getElementById('settings-modal');
 const settingsForm = document.getElementById('settings-form');
 const settingsClose = document.getElementById('settings-close');
+const wachtwoordForm = document.getElementById('wachtwoord-form');
+const wachtwoordMelding = document.getElementById('wachtwoord-melding');
 
 const bulkActionsBar = document.getElementById('bulk-actions');
 const bulkCountEl = document.getElementById('bulk-count');
@@ -122,7 +124,7 @@ async function loadLeads() {
     // op 0 springen zodra je er zelf op klikt.
     const [leads, pipelineSelectie] = await Promise.all([
       fetchLeads(currentFilters, sortering),
-      fetchLeads({ ...currentFilters, statussen: [] }, sortering),
+      fetchLeads({ ...currentFilters, statussen: [] }, sortering, 'status'),
     ]);
     currentLeads = leads;
     pipelineLeads = pipelineSelectie;
@@ -497,6 +499,47 @@ function closeSettings() {
 settingsBtn.addEventListener('click', openSettings);
 settingsClose.addEventListener('click', closeSettings);
 
+// Naast het venster klikken sluit het ook. De controle op e.target zorgt dat
+// een klik binnen het venster zelf niets doet — anders zou je het per ongeluk
+// sluiten zodra je een veld aanklikt.
+settingsModal.addEventListener('click', (e) => {
+  if (e.target === settingsModal) closeSettings();
+});
+
+conceptModal.addEventListener('click', (e) => {
+  if (e.target === conceptModal) conceptModal.classList.add('hidden');
+});
+
+// Escape sluit het bovenste open venster.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!conceptModal.classList.contains('hidden')) conceptModal.classList.add('hidden');
+  else if (!settingsModal.classList.contains('hidden')) closeSettings();
+});
+
+wachtwoordForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const nieuw = document.getElementById('nieuw-wachtwoord').value;
+  const herhaal = document.getElementById('nieuw-wachtwoord-herhaal').value;
+
+  const toon = (tekst, gelukt) => {
+    wachtwoordMelding.textContent = tekst;
+    wachtwoordMelding.className = `melding melding-${gelukt ? 'gelukt' : 'fout'}`;
+  };
+
+  if (nieuw.length < 12) return toon('Kies een wachtwoord van minstens 12 tekens.', false);
+  if (nieuw !== herhaal) return toon('De twee wachtwoorden zijn niet gelijk.', false);
+
+  const knop = wachtwoordForm.querySelector('button[type="submit"]');
+  try {
+    await metLaadstatus(knop, 'Bezig…', () => wijzigWachtwoord(nieuw));
+    wachtwoordForm.reset();
+    toon('Je wachtwoord is gewijzigd. Bewaar het goed — dit is de sleutel tot je leads.', true);
+  } catch (err) {
+    toon('Wijzigen mislukt: ' + err.message, false);
+  }
+});
+
 settingsForm.addEventListener('submit', (e) => {
   e.preventDefault();
   saveSettings({
@@ -573,7 +616,12 @@ leadGrid.addEventListener('click', async (e) => {
       const { subject, body } = splitMail(lead.mail_concept);
       // De server controleert zelf op niet-benaderen, daglimiet en dubbele
       // verzending, en legt de mail daarna vast in de mailhistorie.
-      await sendMail({ leadId: id, schema: activeSchema(), subject, body });
+      const uitkomst = await sendMail({ leadId: id, schema: activeSchema(), subject, body });
+      // De mail is verstuurd, maar het vastleggen kan zijn misgegaan. Dat moet
+      // je zien: anders mail je deze lead straks een tweede keer.
+      if (uitkomst?.waarschuwingen?.length) {
+        errorEl.textContent = uitkomst.waarschuwingen.join(' ');
+      }
       const wijziging = {
         laatste_contact: new Date().toISOString(),
         ...(lead.status === 'nieuw' ? { status: 'benaderd' } : {}),
@@ -802,6 +850,10 @@ conceptVerstuurBtn.addEventListener('click', async () => {
   conceptVerstuurBtn.disabled = true;
   let verstuurd = 0;
   const fouten = [];
+  // Apart van 'fouten': deze mails zijn wél verstuurd, er ging alleen iets mis
+  // bij het opschrijven. Ze onder 'niet gelukt' zetten zou je verleiden tot
+  // opnieuw versturen.
+  const waarschuwingen = [];
 
   for (let i = 0; i < gekozen.length; i++) {
     const lead = currentLeads.find((l) => l.id === gekozen[i]);
@@ -810,7 +862,10 @@ conceptVerstuurBtn.addEventListener('click', async () => {
     conceptResultaat.textContent = `Versturen: ${i + 1} van ${gekozen.length} (${lead.bedrijfsnaam})…`;
     try {
       const { subject, body } = splitMail(lead.mail_concept);
-      await sendMail({ leadId: lead.id, schema: activeSchema(), subject, body });
+      const uitkomst = await sendMail({ leadId: lead.id, schema: activeSchema(), subject, body });
+      if (uitkomst?.waarschuwingen?.length) {
+        waarschuwingen.push(`${lead.bedrijfsnaam}: ${uitkomst.waarschuwingen.join(' ')}`);
+      }
       if (lead.status === 'nieuw') await updateLead(lead.id, { status: 'benaderd' });
       verstuurd++;
     } catch (err) {
@@ -819,7 +874,9 @@ conceptVerstuurBtn.addEventListener('click', async () => {
   }
 
   conceptResultaat.textContent =
-    `${verstuurd} verstuurd.` + (fouten.length ? ` Niet gelukt — ${fouten.join(' · ')}` : '');
+    `${verstuurd} verstuurd.` +
+    (fouten.length ? ` Niet gelukt — ${fouten.join(' · ')}` : '') +
+    (waarschuwingen.length ? ` Let op — ${waarschuwingen.join(' · ')}` : '');
   conceptVerstuurBtn.disabled = false;
   selectedLeadIds.clear();
   updateBulkBar();
